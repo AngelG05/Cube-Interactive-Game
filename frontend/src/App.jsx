@@ -29,6 +29,10 @@ const cubeData = [
   ["together", "alone", "apart", "united", "scattered", "gathered"],
 ]
 
+// Basic geometry constants for spatial reasoning
+const TILE_SIZE = 90 // must match CSS `.tile` size
+const ADJACENCY_THRESHOLD = 130 // pixel distance within which cubes are considered connected
+
 // Face rotations: [rotateX, rotateY] for each face
 const faceRotations = [
   [0, 0],      // front
@@ -49,6 +53,68 @@ const navigationMap = {
   5: [3, 1, 0, 2],  // bottom -> left, right, front, back
 }
 
+// Compute an undirected spatial graph of cubes based on their positions.
+// Nodes: cube indices. Edges: cubes whose centers are within ADJACENCY_THRESHOLD.
+const computeSpatialGraph = (positions) => {
+  const nodes = positions.map((pos, index) => ({
+    id: index,
+    x: pos.x,
+    y: pos.y,
+  }))
+
+  const edges = []
+  const adjacency = positions.map(() => [])
+
+  for (let i = 0; i < positions.length; i++) {
+    const a = positions[i]
+    const ax = a.x + TILE_SIZE / 2
+    const ay = a.y + TILE_SIZE / 2
+
+    for (let j = i + 1; j < positions.length; j++) {
+      const b = positions[j]
+      const bx = b.x + TILE_SIZE / 2
+      const by = b.y + TILE_SIZE / 2
+
+      const dx = ax - bx
+      const dy = ay - by
+      const dist = Math.sqrt(dx * dx + dy * dy)
+
+      if (dist <= ADJACENCY_THRESHOLD) {
+        edges.push({ from: i, to: j, distance: dist })
+        adjacency[i].push(j)
+        adjacency[j].push(i)
+      }
+    }
+  }
+
+  const visited = new Array(positions.length).fill(false)
+  const components = []
+
+  for (let i = 0; i < positions.length; i++) {
+    if (visited[i]) continue
+    const stack = [i]
+    const component = []
+
+    while (stack.length) {
+      const current = stack.pop()
+      if (visited[current]) continue
+      visited[current] = true
+      component.push(current)
+      adjacency[current].forEach((neighbor) => {
+        if (!visited[neighbor]) {
+          stack.push(neighbor)
+        }
+      })
+    }
+
+    if (component.length) {
+      components.push(component)
+    }
+  }
+
+  return { nodes, edges, adjacency, components }
+}
+
 function App() {
   const [positions, setPositions] = useState(() =>
     cubeData.map((_, i) => ({
@@ -65,12 +131,72 @@ function App() {
   )
   const [isExiting, setIsExiting] = useState(false)
 
+  // --- Interaction analytics state ---
+  // Tracks the temporal order in which cubes are focused (clicked).
+  const [selectionSequence, setSelectionSequence] = useState([])
+  // Detailed log of user actions and spatial snapshots.
+  const [interactionLog, setInteractionLog] = useState([])
+  // Whether we are currently in a "connect cubes" session
+  const [isSessionActive, setIsSessionActive] = useState(false)
+  const [sessionId, setSessionId] = useState(0)
+
   const dragging = useRef(null)
   const offset = useRef({ x: 0, y: 0 })
   const hasDragged = useRef(false)
   const startPos = useRef({ x: 0, y: 0 })
   const touchStart = useRef({ x: 0, y: 0 })
   const isSwiping = useRef(false)
+
+  const logSnapshot = (reason) => {
+    const timestamp = Date.now()
+    const spatialGraph = computeSpatialGraph(positions)
+
+    setInteractionLog((prev) => {
+      const snapshot = {
+        type: "snapshot",
+        reason,
+        timestamp,
+        sessionId,
+        selectionSequence: [...selectionSequence],
+        spatialGraph,
+      }
+
+      const nextLog = [...prev, snapshot]
+
+      // Expose data for inspection outside React (e.g., from devtools)
+      if (typeof window !== "undefined") {
+        window.cubeInteractionData = {
+          log: nextLog,
+          lastSnapshot: snapshot,
+        }
+      }
+
+      // Also emit to console so it can be easily captured.
+      // This contains: which cubes were chosen first/last, and their spatial graph.
+      // eslint-disable-next-line no-console
+      console.log("Cube interaction snapshot:", snapshot)
+
+      return nextLog
+    })
+  }
+
+  const handleStartSession = () => {
+    setSessionId((prev) => prev + 1)
+    setSelectionSequence([])
+    setInteractionLog([])
+    setIsSessionActive(true)
+
+    if (typeof window !== "undefined") {
+      window.cubeInteractionData = null
+    }
+  }
+
+  const handleFinishSession = () => {
+    if (!isSessionActive) return
+    // Final snapshot for this session
+    logSnapshot("finish-button")
+    setIsSessionActive(false)
+  }
 
   const onMouseDown = (e, index) => {
     if (focused !== null) return
@@ -104,16 +230,50 @@ function App() {
   }
 
   const onMouseUp = (e, index) => {
-    if (dragging.current !== null && !hasDragged.current && index !== undefined) {
-      // It was a click, not a drag - focus the cube
-      const tile = e.currentTarget
-      const rect = tile.getBoundingClientRect()
-      setFocused(index)
-      setFocusedPosition({
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2
-      })
-      setFaceIndex(cubeFaceIndices[index])
+    if (dragging.current !== null) {
+      if (!hasDragged.current && index !== undefined) {
+        // It was a click, not a drag - focus the cube
+        const tile = e.currentTarget
+        const rect = tile.getBoundingClientRect()
+        setFocused(index)
+        setFocusedPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        })
+        setFaceIndex(cubeFaceIndices[index])
+
+        if (isSessionActive) {
+          const timestamp = Date.now()
+          setSelectionSequence((prev) => [...prev, index])
+          setInteractionLog((prev) => [
+            ...prev,
+            {
+              type: "focus",
+              timestamp,
+              cubeIndex: index,
+              faceIndex: cubeFaceIndices[index],
+              positions: [...positions],
+              sessionId,
+            },
+          ])
+        }
+      } else if (hasDragged.current && dragging.current !== null) {
+        // Drag finished - log the final position of the dragged cube
+        const draggedIndex = dragging.current
+        if (isSessionActive) {
+          const timestamp = Date.now()
+          setInteractionLog((prev) => [
+            ...prev,
+            {
+              type: "dragEnd",
+              timestamp,
+              cubeIndex: draggedIndex,
+              position: { ...positions[draggedIndex] },
+              sessionId,
+            },
+          ])
+        }
+      }
     }
     dragging.current = null
     hasDragged.current = false
@@ -217,6 +377,23 @@ function App() {
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
     >
+      <div className="session-controls">
+        <button
+          className="session-button"
+          onClick={handleStartSession}
+          disabled={isSessionActive}
+        >
+          Start
+        </button>
+        <button
+          className="session-button"
+          onClick={handleFinishSession}
+          disabled={!isSessionActive}
+        >
+          Finish
+        </button>
+      </div>
+
       <div className={`grid ${focused !== null ? "blurred" : ""}`}>
         {cubeData.map((cube, index) => (
           <div
@@ -233,6 +410,53 @@ function App() {
             </span>
           </div>
         ))}
+
+        {selectionSequence.length > 1 && (
+          <svg
+            className="connections"
+            width="550"
+            height="550"
+            viewBox="0 0 550 550"
+          >
+            <defs>
+              <marker
+                id="arrowhead"
+                markerWidth="8"
+                markerHeight="8"
+                refX="6"
+                refY="3"
+                orient="auto"
+              >
+                <polygon points="0 0, 6 3, 0 6" fill="#ffffff" />
+              </marker>
+            </defs>
+            {selectionSequence.slice(0, -1).map((fromIndex, i) => {
+              const toIndex = selectionSequence[i + 1]
+              const fromPos = positions[fromIndex]
+              const toPos = positions[toIndex]
+
+              if (!fromPos || !toPos) return null
+
+              const x1 = fromPos.x + TILE_SIZE / 2
+              const y1 = fromPos.y + TILE_SIZE / 2
+              const x2 = toPos.x + TILE_SIZE / 2
+              const y2 = toPos.y + TILE_SIZE / 2
+
+              return (
+                <line
+                  key={`${fromIndex}-${toIndex}-${i}`}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke="#ffffff"
+                  strokeWidth="2"
+                  markerEnd="url(#arrowhead)"
+                />
+              )
+            })}
+          </svg>
+        )}
       </div>
 
       {focused !== null && focusedPosition && (
@@ -309,6 +533,12 @@ function App() {
             onClick={() => {
               setIsExiting(true)
               setTimeout(() => {
+                // Capture a snapshot of the current spatial arrangement
+                // and the cumulative sequence of cube choices for analysis,
+                // but only while a session is active.
+                if (isSessionActive) {
+                  logSnapshot("overlay-close")
+                }
                 setFocused(null)
                 setFocusedPosition(null)
                 setIsExiting(false)
