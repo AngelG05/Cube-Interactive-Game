@@ -139,6 +139,7 @@ function App() {
   // Whether we are currently in a "connect cubes" session
   const [isSessionActive, setIsSessionActive] = useState(false)
   const [sessionId, setSessionId] = useState(0)
+  const [resultSentence, setResultSentence] = useState("")
 
   const dragging = useRef(null)
   const offset = useRef({ x: 0, y: 0 })
@@ -196,6 +197,29 @@ function App() {
     // Final snapshot for this session
     logSnapshot("finish-button")
     setIsSessionActive(false)
+  }
+
+  const handleShowResult = () => {
+    if (selectionSequence.length === 0) {
+      setResultSentence("")
+      return
+    }
+
+    const words = selectionSequence.map((cubeIndex) => {
+      const face = cubeFaceIndices[cubeIndex] ?? 0
+      return cubeData[cubeIndex][face]
+    })
+
+    const sentence = words.join(" ")
+    setResultSentence(sentence)
+
+    if (typeof window !== "undefined") {
+      window.cubeResultSentence = sentence
+    }
+
+    if (isSessionActive) {
+      logSnapshot("result-button")
+    }
   }
 
   const onMouseDown = (e, index) => {
@@ -392,6 +416,13 @@ function App() {
         >
           Finish
         </button>
+        <button
+          className="session-button session-button-result"
+          onClick={handleShowResult}
+          disabled={selectionSequence.length === 0}
+        >
+          Result
+        </button>
       </div>
 
       <div className={`grid ${focused !== null ? "blurred" : ""}`}>
@@ -421,13 +452,13 @@ function App() {
             <defs>
               <marker
                 id="arrowhead"
-                markerWidth="8"
-                markerHeight="8"
-                refX="6"
-                refY="3"
+                markerWidth="10"
+                markerHeight="10"
+                refX="8"
+                refY="5"
                 orient="auto"
               >
-                <polygon points="0 0, 6 3, 0 6" fill="#ffffff" />
+                  <polygon points="0 0, 8 5, 0 10" fill="#3a3a3a" />
               </marker>
             </defs>
             {selectionSequence.slice(0, -1).map((fromIndex, i) => {
@@ -437,10 +468,25 @@ function App() {
 
               if (!fromPos || !toPos) return null
 
-              const x1 = fromPos.x + TILE_SIZE / 2
-              const y1 = fromPos.y + TILE_SIZE / 2
-              const x2 = toPos.x + TILE_SIZE / 2
-              const y2 = toPos.y + TILE_SIZE / 2
+              const cx1 = fromPos.x + TILE_SIZE / 2
+              const cy1 = fromPos.y + TILE_SIZE / 2
+              const cx2 = toPos.x + TILE_SIZE / 2
+              const cy2 = toPos.y + TILE_SIZE / 2
+
+              const dx = cx2 - cx1
+              const dy = cy2 - cy1
+              const len = Math.sqrt(dx * dx + dy * dy)
+
+              if (!len) return null
+
+              const ux = dx / len
+              const uy = dy / len
+              const margin = TILE_SIZE / 2 - 6 // stop a bit before the text
+
+              const x1 = cx1 + ux * margin
+              const y1 = cy1 + uy * margin
+              const x2 = cx2 - ux * margin
+              const y2 = cy2 - uy * margin
 
               return (
                 <line
@@ -449,8 +495,9 @@ function App() {
                   y1={y1}
                   x2={x2}
                   y2={y2}
-                  stroke="#ffffff"
-                  strokeWidth="2"
+                  stroke="#3a3a3a"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
                   markerEnd="url(#arrowhead)"
                 />
               )
@@ -551,6 +598,13 @@ function App() {
       <div className="hint">
         drag to move · click to focus · use arrows or swipe to flip cube
       </div>
+
+      {resultSentence && (
+        <div className="result-banner">
+          <span className="result-label">Result</span>
+          <span className="result-text">{resultSentence}</span>
+        </div>
+      )}
     </div>
   )
 }
