@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import "./App.css"
 
 const cubeData = [
@@ -141,6 +141,11 @@ function App() {
   const [sessionId, setSessionId] = useState(0)
   const [resultSentence, setResultSentence] = useState("")
 
+  // Timer state: elapsed milliseconds since session start
+  const [elapsedMs, setElapsedMs] = useState(0)
+  const startTimeRef = useRef(null)
+  const timerRef = useRef(null)
+
   const dragging = useRef(null)
   const offset = useRef({ x: 0, y: 0 })
   const hasDragged = useRef(false)
@@ -190,6 +195,13 @@ function App() {
     if (typeof window !== "undefined") {
       window.cubeInteractionData = null
     }
+    // start timer
+    if (timerRef.current) clearInterval(timerRef.current)
+    startTimeRef.current = Date.now()
+    setElapsedMs(0)
+    timerRef.current = setInterval(() => {
+      setElapsedMs(Date.now() - startTimeRef.current)
+    }, 100)
   }
 
   const handleFinishSession = () => {
@@ -197,6 +209,33 @@ function App() {
     // Final snapshot for this session
     logSnapshot("finish-button")
     setIsSessionActive(false)
+    // stop timer and record final elapsed
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    if (startTimeRef.current) {
+      setElapsedMs(Date.now() - startTimeRef.current)
+      startTimeRef.current = null
+    }
+  }
+
+  // Clear timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [])
+
+  const formatTime = (ms) => {
+    const totalSeconds = Math.floor(ms / 1000)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    const centiseconds = Math.floor((ms % 1000) / 10)
+    const mm = String(minutes).padStart(2, "0")
+    const ss = String(seconds).padStart(2, "0")
+    const cs = String(centiseconds).padStart(2, "0")
+    return `${mm}:${ss}.${cs}`
   }
 
   const handleShowResult = () => {
@@ -416,6 +455,9 @@ function App() {
         >
           Finish
         </button>
+        <div className="session-timer" aria-live="polite">
+          {formatTime(elapsedMs)}
+        </div>
         <button
           className="session-button session-button-result"
           onClick={handleShowResult}
