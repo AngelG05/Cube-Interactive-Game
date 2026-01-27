@@ -42,6 +42,7 @@ body {
   font-size: 0.85rem;
   cursor: grab;
   user-select: none;
+  z-index: 3;
   box-shadow:
     0 1px 2px rgba(0,0,0,0.04),
     0 6px 20px rgba(0,0,0,0.06);
@@ -246,7 +247,7 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 2;
+  z-index: 1;
 }
 
 .session-controls {
@@ -277,6 +278,15 @@ body {
   transition: all 0.2s ease;
 }
 
+.session-button-result {
+  background: #3a3a3a;
+  color: #f7f3ee;
+}
+
+.session-button-result:hover:enabled {
+  background: #242424;
+}
+
 .session-button:hover:enabled {
   background: rgba(255, 255, 255, 1);
   box-shadow:
@@ -288,4 +298,39 @@ body {
   opacity: 0.5;
   cursor: default;
   box-shadow: none;
+}
+
+.result-banner {
+  position: absolute;
+  left: 50%;
+  bottom: 56px;
+  transform: translateX(-50%);
+  max-width: min(80vw, 720px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.75rem;
+  color: #3a3a3a;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.result-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+  opacity: 0.85;
+}
+
+.result-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
