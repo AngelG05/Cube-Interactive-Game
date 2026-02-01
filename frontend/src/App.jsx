@@ -118,8 +118,8 @@ const computeSpatialGraph = (positions) => {
 function App() {
   const [positions, setPositions] = useState(() =>
     cubeData.map((_, i) => ({
-      x: (i % 5) * 110,
-      y: Math.floor(i / 5) * 110,
+      x: (i % 5) * 130,
+      y: Math.floor(i / 5) * 130,
     }))
   )
 
@@ -131,12 +131,17 @@ function App() {
   )
   const [isExiting, setIsExiting] = useState(false)
 
+  // --- Node-based connection state ---
+  // Connections: array of {from: {cubeIndex, nodePosition}, to: {cubeIndex, nodePosition}}
+  const [connections, setConnections] = useState([])
+  // Selected node: {cubeIndex, nodePosition} or null
+  const [selectedNode, setSelectedNode] = useState(null)
+  // Toast notifications
+  const [toasts, setToasts] = useState([])
+  
   // --- Interaction analytics state ---
-  // Tracks the temporal order in which cubes are focused (clicked).
-  const [selectionSequence, setSelectionSequence] = useState([])
-  // Detailed log of user actions and spatial snapshots.
+  // eslint-disable-next-line no-unused-vars
   const [interactionLog, setInteractionLog] = useState([])
-  // Whether we are currently in a "connect cubes" session
   const [isSessionActive, setIsSessionActive] = useState(false)
   const [sessionId, setSessionId] = useState(0)
   const [resultSentence, setResultSentence] = useState("")
@@ -153,6 +158,15 @@ function App() {
   const touchStart = useRef({ x: 0, y: 0 })
   const isSwiping = useRef(false)
 
+  // Toast notification helper
+  const showToast = (message, type = "info") => {
+    const id = Date.now()
+    setToasts((prev) => [...prev, { id, message, type }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id))
+    }, 3000)
+  }
+
   const logSnapshot = (reason) => {
     const timestamp = Date.now()
     const spatialGraph = computeSpatialGraph(positions)
@@ -163,13 +177,12 @@ function App() {
         reason,
         timestamp,
         sessionId,
-        selectionSequence: [...selectionSequence],
+        connections: [...connections],
         spatialGraph,
       }
 
       const nextLog = [...prev, snapshot]
 
-      // Expose data for inspection outside React (e.g., from devtools)
       if (typeof window !== "undefined") {
         window.cubeInteractionData = {
           log: nextLog,
@@ -177,9 +190,6 @@ function App() {
         }
       }
 
-      // Also emit to console so it can be easily captured.
-      // This contains: which cubes were chosen first/last, and their spatial graph.
-      // eslint-disable-next-line no-console
       console.log("Cube interaction snapshot:", snapshot)
 
       return nextLog
@@ -188,9 +198,11 @@ function App() {
 
   const handleStartSession = () => {
     setSessionId((prev) => prev + 1)
-    setSelectionSequence([])
+    setConnections([])
+    setSelectedNode(null)
     setInteractionLog([])
     setIsSessionActive(true)
+    setResultSentence("")
 
     if (typeof window !== "undefined") {
       window.cubeInteractionData = null
@@ -202,6 +214,8 @@ function App() {
     timerRef.current = setInterval(() => {
       setElapsedMs(Date.now() - startTimeRef.current)
     }, 100)
+    
+    showToast("Session started. Click nodes to create connections.", "success")
   }
 
   const handleFinishSession = () => {
@@ -209,6 +223,7 @@ function App() {
     // Final snapshot for this session
     logSnapshot("finish-button")
     setIsSessionActive(false)
+    setSelectedNode(null)
     // stop timer and record final elapsed
     if (timerRef.current) {
       clearInterval(timerRef.current)
@@ -218,6 +233,35 @@ function App() {
       setElapsedMs(Date.now() - startTimeRef.current)
       startTimeRef.current = null
     }
+    
+    showToast("Session finished.", "success")
+  }
+
+  const handleReset = () => {
+    // Reset all connections and selections
+    setConnections([])
+    setSelectedNode(null)
+    setResultSentence("")
+    setInteractionLog([])
+    setIsSessionActive(false)
+    
+    // Reset cube positions to initial grid
+    setPositions(
+      cubeData.map((_, i) => ({
+        x: (i % 5) * 130,
+        y: Math.floor(i / 5) * 130,
+      }))
+    )
+    
+    // Reset timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    startTimeRef.current = null
+    setElapsedMs(0)
+    
+    showToast("Reset complete.", "success")
   }
 
   // Clear timer on unmount
@@ -238,13 +282,54 @@ function App() {
     return `${mm}:${ss}.${cs}`
   }
 
+  // Compute story order from connections graph
+  const computeStoryOrder = () => {
+    if (connections.length === 0) return []
+
+    // Build adjacency map: cubeIndex -> {next: cubeIndex, order: number}
+    const outgoing = new Map()
+    const incoming = new Map()
+
+    connections.forEach((conn) => {
+      outgoing.set(conn.from.cubeIndex, conn.to.cubeIndex)
+      incoming.set(conn.to.cubeIndex, conn.from.cubeIndex)
+    })
+
+    // Find the starting cube (has outgoing but no incoming)
+    let start = null
+    for (const [cube] of outgoing) {
+      if (!incoming.has(cube)) {
+        start = cube
+        break
+      }
+    }
+
+    if (start === null) return []
+
+    // Follow the chain
+    const order = []
+    let current = start
+    const visited = new Set()
+
+    while (current !== null && !visited.has(current)) {
+      visited.add(current)
+      order.push(current)
+      current = outgoing.get(current) ?? null
+    }
+
+    return order
+  }
+
   const handleShowResult = () => {
-    if (selectionSequence.length === 0) {
+    const order = computeStoryOrder()
+
+    if (order.length === 0) {
       setResultSentence("")
+      showToast("No connected cubes to show.", "error")
       return
     }
 
-    const words = selectionSequence.map((cubeIndex) => {
+    const words = order.map((cubeIndex) => {
       const face = cubeFaceIndices[cubeIndex] ?? 0
       return cubeData[cubeIndex][face]
     })
@@ -259,6 +344,8 @@ function App() {
     if (isSessionActive) {
       logSnapshot("result-button")
     }
+    
+    showToast("Story generated!", "success")
   }
 
   const onMouseDown = (e, index) => {
@@ -306,13 +393,11 @@ function App() {
         setFaceIndex(cubeFaceIndices[index])
 
         if (isSessionActive) {
-          const timestamp = Date.now()
-          setSelectionSequence((prev) => [...prev, index])
           setInteractionLog((prev) => [
             ...prev,
             {
               type: "focus",
-              timestamp,
+              timestamp: Date.now(),
               cubeIndex: index,
               faceIndex: cubeFaceIndices[index],
               positions: [...positions],
@@ -324,12 +409,11 @@ function App() {
         // Drag finished - log the final position of the dragged cube
         const draggedIndex = dragging.current
         if (isSessionActive) {
-          const timestamp = Date.now()
           setInteractionLog((prev) => [
             ...prev,
             {
               type: "dragEnd",
-              timestamp,
+              timestamp: Date.now(),
               cubeIndex: draggedIndex,
               position: { ...positions[draggedIndex] },
               sessionId,
@@ -340,6 +424,113 @@ function App() {
     }
     dragging.current = null
     hasDragged.current = false
+  }
+
+  // Node click handler
+  const handleNodeClick = (e, cubeIndex, nodePosition) => {
+    e.stopPropagation()
+    
+    if (!isSessionActive) {
+      showToast("Start a session first to create connections.", "error")
+      return
+    }
+
+    // Check if clicking an already connected pair to remove connection
+    const existingConnIdx = connections.findIndex(
+      (conn) =>
+        (conn.from.cubeIndex === cubeIndex && conn.from.nodePosition === nodePosition) ||
+        (conn.to.cubeIndex === cubeIndex && conn.to.nodePosition === nodePosition)
+    )
+
+    if (existingConnIdx !== -1 && selectedNode) {
+      const conn = connections[existingConnIdx]
+      const isMatchingPair =
+        (conn.from.cubeIndex === selectedNode.cubeIndex && conn.from.nodePosition === selectedNode.nodePosition) ||
+        (conn.to.cubeIndex === selectedNode.cubeIndex && conn.to.nodePosition === selectedNode.nodePosition)
+
+      if (isMatchingPair) {
+        // Remove the connection
+        setConnections((prev) => prev.filter((_, i) => i !== existingConnIdx))
+        setSelectedNode(null)
+        showToast("Connection removed.", "info")
+        if (isSessionActive) {
+          logSnapshot("connection-removed")
+        }
+        return
+      }
+    }
+
+    // If no node is selected, select this one
+    if (!selectedNode) {
+      setSelectedNode({ cubeIndex, nodePosition })
+      showToast("Node selected. Click another node to connect.", "info")
+      return
+    }
+
+    // If clicking the same node, deselect
+    if (selectedNode.cubeIndex === cubeIndex && selectedNode.nodePosition === nodePosition) {
+      setSelectedNode(null)
+      showToast("Node deselected.", "info")
+      return
+    }
+
+    // Trying to create a connection
+    const fromNode = selectedNode
+    const toNode = { cubeIndex, nodePosition }
+
+    // Validation 1: No self-connections
+    if (fromNode.cubeIndex === toNode.cubeIndex) {
+      showToast("Cannot connect a cube to itself.", "error")
+      return
+    }
+
+    // Validation 2: Check max connections (1 outgoing, 1 incoming per cube)
+    const fromCubeOutgoing = connections.filter((c) => c.from.cubeIndex === fromNode.cubeIndex).length
+    const toCubeIncoming = connections.filter((c) => c.to.cubeIndex === toNode.cubeIndex).length
+
+    if (fromCubeOutgoing >= 1) {
+      showToast(`Cube ${fromNode.cubeIndex + 1} already has an outgoing connection.`, "error")
+      return
+    }
+
+    if (toCubeIncoming >= 1) {
+      showToast(`Cube ${toNode.cubeIndex + 1} already has an incoming connection.`, "error")
+      return
+    }
+
+    // Validation 3: Detect cycles
+    const wouldCreateCycle = (from, to) => {
+      const tempConnections = [...connections, { from, to }]
+      const outgoing = new Map()
+      tempConnections.forEach((conn) => {
+        outgoing.set(conn.from.cubeIndex, conn.to.cubeIndex)
+      })
+
+      const visited = new Set()
+      let current = from.cubeIndex
+
+      while (current !== null) {
+        if (visited.has(current)) return true
+        visited.add(current)
+        current = outgoing.get(current) ?? null
+      }
+
+      return false
+    }
+
+    if (wouldCreateCycle(fromNode, toNode)) {
+      showToast("Cannot create a cycle in the story.", "error")
+      return
+    }
+
+    // Create the connection
+    setConnections((prev) => [...prev, { from: fromNode, to: toNode }])
+    setSelectedNode(null)
+    showToast("Connection created!", "success")
+    
+    if (isSessionActive) {
+      logSnapshot("connection-created")
+    }
   }
 
   const rotateCube = (direction) => {
@@ -368,7 +559,7 @@ function App() {
     isSwiping.current = false
   }
 
-  const handleTouchMove = (e) => {
+  const handleTouchMove = () => {
     if (!touchStart.current) return
     isSwiping.current = true
   }
@@ -455,93 +646,182 @@ function App() {
         >
           Finish
         </button>
+        <button
+          className="session-button"
+          onClick={handleReset}
+          disabled={connections.length === 0 && elapsedMs === 0 && !resultSentence}
+        >
+          Reset
+        </button>
         <div className="session-timer" aria-live="polite">
           {formatTime(elapsedMs)}
         </div>
         <button
           className="session-button session-button-result"
           onClick={handleShowResult}
-          disabled={selectionSequence.length === 0}
+          disabled={connections.length === 0}
         >
           Result
         </button>
       </div>
 
       <div className={`grid ${focused !== null ? "blurred" : ""}`}>
-        {cubeData.map((cube, index) => (
-          <div
-            key={index}
-            className="tile"
-            onMouseDown={(e) => onMouseDown(e, index)}
-            onMouseUp={(e) => onMouseUp(e, index)}
-            style={{
-              transform: `translate(${positions[index].x}px, ${positions[index].y}px)`,
-            }}
-          >
-            <span key={cubeFaceIndices[index]}>
-              {cube[cubeFaceIndices[index]]}
-            </span>
-          </div>
-        ))}
+        {cubeData.map((cube, index) => {
+          const nodePositions = ["top", "right", "bottom", "left"]
+          
+          return (
+            <div
+              key={index}
+              className="tile"
+              onMouseDown={(e) => onMouseDown(e, index)}
+              onMouseUp={(e) => onMouseUp(e, index)}
+              style={{
+                transform: `translate(${positions[index].x}px, ${positions[index].y}px)`,
+              }}
+            >
+              <span key={cubeFaceIndices[index]}>
+                {cube[cubeFaceIndices[index]]}
+              </span>
+              
+              {/* Connection nodes */}
+              {nodePositions.map((nodePos) => {
+                const isSelected = selectedNode?.cubeIndex === index && selectedNode?.nodePosition === nodePos
+                const isConnected = connections.some(
+                  (conn) =>
+                    (conn.from.cubeIndex === index && conn.from.nodePosition === nodePos) ||
+                    (conn.to.cubeIndex === index && conn.to.nodePosition === nodePos)
+                )
+                
+                return (
+                  <div
+                    key={nodePos}
+                    className={`connection-node node-${nodePos} ${
+                      isSelected ? "selected" : ""
+                    } ${isConnected ? "connected" : ""}`}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => handleNodeClick(e, index, nodePos)}
+                  />
+                )
+              })}
+            </div>
+          )
+        })}
 
-        {selectionSequence.length > 1 && (
+        {connections.length > 0 && (
           <svg
             className="connections"
             width="550"
             height="550"
             viewBox="0 0 550 550"
+            style={{ overflow: "visible" }}
           >
             <defs>
               <marker
                 id="arrowhead"
-                markerWidth="10"
-                markerHeight="10"
-                refX="8"
-                refY="5"
+                markerWidth="5"
+                markerHeight="5"
+                refX="4.5"
+                refY="2.5"
                 orient="auto"
               >
-                  <polygon points="0 0, 8 5, 0 10" fill="#3a3a3a" />
+                <polygon points="0 0, 5 2.5, 0 5" fill="#b37860" />
               </marker>
             </defs>
-            {selectionSequence.slice(0, -1).map((fromIndex, i) => {
-              const toIndex = selectionSequence[i + 1]
-              const fromPos = positions[fromIndex]
-              const toPos = positions[toIndex]
+            {connections.map((conn, idx) => {
+              const fromPos = positions[conn.from.cubeIndex]
+              const toPos = positions[conn.to.cubeIndex]
 
               if (!fromPos || !toPos) return null
 
-              const cx1 = fromPos.x + TILE_SIZE / 2
-              const cy1 = fromPos.y + TILE_SIZE / 2
-              const cx2 = toPos.x + TILE_SIZE / 2
-              const cy2 = toPos.y + TILE_SIZE / 2
+              // Calculate node position offsets
+              const getNodeOffset = (nodePosition) => {
+                const offset = 45 // TILE_SIZE / 2
+                switch (nodePosition) {
+                  case "top":
+                    return { x: offset, y: 0 }
+                  case "right":
+                    return { x: TILE_SIZE, y: offset }
+                  case "bottom":
+                    return { x: offset, y: TILE_SIZE }
+                  case "left":
+                    return { x: 0, y: offset }
+                  default:
+                    return { x: offset, y: offset }
+                }
+              }
 
-              const dx = cx2 - cx1
-              const dy = cy2 - cy1
-              const len = Math.sqrt(dx * dx + dy * dy)
+              const fromOffset = getNodeOffset(conn.from.nodePosition)
+              const toOffset = getNodeOffset(conn.to.nodePosition)
 
-              if (!len) return null
+              const x1 = fromPos.x + fromOffset.x
+              const y1 = fromPos.y + fromOffset.y
+              const x2 = toPos.x + toOffset.x
+              const y2 = toPos.y + toOffset.y
 
-              const ux = dx / len
-              const uy = dy / len
-              const margin = TILE_SIZE / 2 - 6 // stop a bit before the text
+              // Calculate control point for curved line
+              const dx = x2 - x1
+              const dy = y2 - y1
+              const distance = Math.sqrt(dx * dx + dy * dy)
+              
+              // Create a smooth curve by offsetting the control point perpendicular to the line
+              const midX = (x1 + x2) / 2
+              const midY = (y1 + y2) / 2
+              
+              // Perpendicular offset for curve (adjust the divisor for more/less curve)
+              const curvature = distance * 0.15
+              const perpX = -dy / distance
+              const perpY = dx / distance
+              
+              const controlX = midX + perpX * curvature
+              const controlY = midY + perpY * curvature
 
-              const x1 = cx1 + ux * margin
-              const y1 = cy1 + uy * margin
-              const x2 = cx2 - ux * margin
-              const y2 = cy2 - uy * margin
+              // Create the curved path
+              const pathData = `M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`
+
+              // Calculate the position and angle for the arrow at the end
+              const t = 0.5 // Position on curve for badge (0.5 = middle)
+              const badgeX = (1 - t) * (1 - t) * x1 + 2 * (1 - t) * t * controlX + t * t * x2
+              const badgeY = (1 - t) * (1 - t) * y1 + 2 * (1 - t) * t * controlY + t * t * y2
+
+              // Compute story order for this connection
+              const storyOrder = computeStoryOrder()
+              const fromOrder = storyOrder.indexOf(conn.from.cubeIndex)
+              const orderNumber = fromOrder >= 0 ? fromOrder + 1 : null
 
               return (
-                <line
-                  key={`${fromIndex}-${toIndex}-${i}`}
-                  x1={x1}
-                  y1={y1}
-                  x2={x2}
-                  y2={y2}
-                  stroke="#3a3a3a"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  markerEnd="url(#arrowhead)"
-                />
+                <g key={`conn-${idx}`}>
+                  <path
+                    d={pathData}
+                    stroke="#b37860"
+                    strokeWidth="4"
+                    fill="none"
+                    strokeLinecap="round"
+                    markerEnd="url(#arrowhead)"
+                  />
+                  {orderNumber !== null && (
+                    <>
+                      <circle
+                        cx={badgeX}
+                        cy={badgeY}
+                        r="16"
+                        fill="#f7f3ee"
+                        stroke="#b37860"
+                        strokeWidth="3"
+                      />
+                      <text
+                        x={badgeX}
+                        y={badgeY}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill="#b37860"
+                        fontSize="13"
+                        fontWeight="700"
+                      >
+                        {orderNumber}
+                      </text>
+                    </>
+                  )}
+                </g>
               )
             })}
           </svg>
@@ -638,7 +918,16 @@ function App() {
       )}
 
       <div className="hint">
-        drag to move · click to focus · use arrows or swipe to flip cube
+        drag to move · click to focus · use arrows or swipe to flip cube · click nodes to connect
+      </div>
+
+      {/* Toast notifications */}
+      <div className="toast-container">
+        {toasts.map((toast) => (
+          <div key={toast.id} className={`toast toast-${toast.type}`}>
+            {toast.message}
+          </div>
+        ))}
       </div>
 
       {resultSentence && (
