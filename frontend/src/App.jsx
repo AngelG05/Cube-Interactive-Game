@@ -1,37 +1,197 @@
 import { useState, useRef, useEffect } from "react"
 import "./App.css"
 
+// HIJLI STORY - 25 Cubes organized into 5 narrative phases
 const cubeData = [
-  ["begin", "once", "if only", "perhaps", "always", "never"],
-  ["the moon", "a shadow", "silence", "whisper", "echo", "light"],
-  ["she said", "he wondered", "they knew", "we forgot", "I dreamed", "you saw"],
-  ["beneath", "through", "beyond", "within", "beside", "between"],
-  ["waiting", "running", "falling", "rising", "floating", "sinking"],
-  ["the door", "a window", "the path", "a bridge", "the edge", "a threshold"],
-  ["remember", "forget", "imagine", "believe", "doubt", "hope"],
-  ["crimson", "azure", "amber", "silver", "obsidian", "pearl"],
-  ["morning", "twilight", "midnight", "dawn", "dusk", "noon"],
-  ["secrets", "stories", "memories", "dreams", "fears", "wishes"],
-  ["softly", "swiftly", "slowly", "suddenly", "silently", "surely"],
-  ["the child", "an elder", "a stranger", "the lover", "a ghost", "the self"],
-  ["lost", "found", "hidden", "revealed", "broken", "whole"],
-  ["water", "fire", "earth", "air", "void", "spirit"],
-  ["before", "after", "during", "while", "until", "since"],
-  ["hunger", "thirst", "longing", "peace", "chaos", "calm"],
-  ["a letter", "a key", "a map", "a coin", "a feather", "a stone"],
-  ["spoke", "listened", "watched", "touched", "tasted", "felt"],
-  ["ancient", "new", "eternal", "fleeting", "sacred", "mundane"],
-  ["the forest", "the sea", "the city", "the desert", "the mountain", "the sky"],
-  ["but then", "and so", "therefore", "however", "meanwhile", "finally"],
-  ["growing", "fading", "changing", "staying", "leaving", "arriving"],
-  ["trust", "betray", "protect", "abandon", "embrace", "release"],
-  ["voices", "footsteps", "heartbeats", "breath", "thunder", "rain"],
-  ["together", "alone", "apart", "united", "scattered", "gathered"],
+  // PHASE 1 — BEGINNING (Cubes 1-5)
+  ["A provincial dream settling into captivity.", "Administrative walls bending into detention.", "The 1930 Act lingering like a shadow.", "Preventive detention shaping Bengal's horizon.", "Overflowed prisons echoing inside new boundaries.", "Hijli emerging from abandoned intentions."],
+  ["Barbed wire holding the landscape still.", "Watchtowers cutting silence into the sky.", "A Panopticon breathing across dry earth.", "Segregated barracks muting organisation.", "Isolation deepening control near Kharagpur.", "Minimal care suspended beneath maximum surveillance."],
+  ["Young radicals marked by intelligence murmurs.", "Revolutionaries and pacifists sharing confinement.", "\"Subversive intent\" replacing evidence entirely.", "Anushilan and Jugantar voices compressed inward.", "No charge, no trial, only containment.", "Networks held still by silence."],
+  ["Emergency ordinances pressing Bengal's breath.", "A thousand arrests shaping the mood.", "Hijli absorbing the strain of unrest.", "Preventive detention thickening the air.", "A province watched more than heard.", "Fear and policy woven tightly together."],
+  ["Three names slipping beyond the boundary.", "An escape humming under the night.", "Strict watch folding over the camp.", "A birthday imagined inside confinement.", "The atmosphere waiting for a break.", "Darkness preparing its own vocabulary."],
+  // PHASE 2 — TENSIONS & APPROACH (Cubes 6-10)
+  ["A cry tearing through Hijli's night.", "\"They are going to kill!\" (Prisoner)", "Panic suspended in unseen corners.", "Fear spreading without direction.", "Darkness carrying unsteady truths.", "Voices rising before meaning forms."],
+  ["An alarm trembling through the barracks.", "Havildar Bakshi's authority thick in the air.", "Rifles forming their own geometry.", "Shadows moving like command.", "A charged stillness preceding violence.", "Hierarchy breathing through narrow corridors."],
+  ["\"They attacked us first.\" (Officials)", "\"We were unarmed.\" (Prisoners)", "Truth suspended between competing lights.", "Darkness editing every perspective.", "Two narratives refusing to meet.", "Certainty dissolving into contradiction."],
+  ["Close quarters thickening tempers.", "Barracks holding unspoken friction.", "Force gathering without direction.", "Tension rising like trapped heat.", "Camp walls absorbing unrest quietly.", "Anger accumulating in confined spaces."],
+  ["Tarakeswar's presence against a stone boundary.", "Santosh's stillness beside unfolding danger.", "Youth framed by unlit corners.", "A night balancing on two names.", "Lives poised within tightening shadows.", "Hijli holding its breath."],
+  // PHASE 3 — THE FIRING (Cubes 11-15)
+  ["Tarakeswar's name carried by two bullets.", "Santosh's body answering silent rifles.", "Blood settling on the prison floor.", "Unarmed detainees shaped by gunfire.", "Hijli remembered through two fallen youths.", "A night marked by irreversible violence."],
+  ["Nearly forty bodies holding pain.", "Saili Ghosh among the injured breath.", "First aid rising from trembling hands.", "Hospital refusal hanging in the air.", "Wounds spreading quiet testimony.", "A barrack saturated with suffering."],
+  ["\"Only two are dead.\" (Officer)", "\"They should be taught a good lesson.\" (Officer)", "Authority speaking through cruelty.", "Humiliation settling on fresh blood.", "News held back under command.", "Power tightening its language."],
+  ["Tear gas drifting through women's quarters.", "Grief disciplined under surveillance.", "Rifle butt-ends bruising the night.", "Violence pressing close to the skin.", "Chaos echoing through narrow walls.", "A camp inhaling fear deeply."],
+  ["A sketch pencil lying beside silence.", "Santosh's unfinished drawing becoming witness.", "Art interrupted by gunfire.", "Memory anchored in small things.", "A final trace left on the floor.", "Testimony surviving as a fragment."],
+  // PHASE 4 — AFTERMATH (Cubes 16-20)
+  ["Bose's resolve standing at Hijli's gate.", "Police resistance folding into protest.", "Two coffins gathering a city's sorrow.", "Mourning travelling from Kharagpur to Calcutta.", "Resignation becoming a political gesture.", "A leader shaped by grief."],
+  ["Three hundred girls entering the movement's fire.", "Midnight slogans shaking quiet streets.", "\"Atyacharir Rakta Chai!\" (Students)", "Youth turning pain into thunder.", "A province stirred by young voices.", "Resistance rising from restless hearts."],
+  ["Bodies refusing food to claim justice.", "Hunger shaping a collective stance.", "Inquiry forced by moral pressure.", "\"Altogether unjustified.\" (Committee)", "Truth opening through refusal.", "A demand pressed into history."],
+  ["\"I am not a political leader.\" (Tagore)", "\"This firing has darkened our minds.\" (Tagore)", "Prashna rising from wounded vision.", "\"Hidden violence, cruelty of night's shadows.\" (Tagore)", "A poet standing before tragedy.", "Words carrying unbearable light."],
+  ["\"How long will the British murder our youths?\" (Bose)", "Unity called across ideological lines.", "Town Hall swelling before sunrise.", "Bengal's leaders naming the injustice.", "Protest forming its own architecture.", "A province speaking without restraint."],
+  // PHASE 5 — RESPONSE & LEGACY (Cubes 21-25)
+  ["\"Wanton firing in Hijli.\" (Gandhi)", "\"Detenus—kept without trial—shot dead.\" (Gandhi)", "Nonviolence asked to endure provocation.", "Barbarity staining the freedom struggle.", "A moral wound shaping response.", "Calm carried through storm."],
+  ["\"Shocking incidents at Hijli.\" (Nehru)", "\"Altogether inhuman and unpardonable.\" (Nehru)", "Bengal demanding attention at last.", "Inquiry called from Delhi's letters.", "Leadership stirred by outrage.", "A nation absorbing the blow."],
+  ["\"Never be caught doing anything.\" (Assembly comment)", "Prisoners guarding the bodies as shields.", "\"Shoot us also,\" they declare.", "Goondas moving under official sanction.", "Ordinance arrests shaping everyday fear.", "Hijli becoming symbol and warning."],
+  ["\"This is our answer to Hijli.\" (Note)", "A magistrate struck; a youth hanged.", "Sacrifice echoing through Bengal's veins.", "\"Our sacrifices will awaken India.\" (Note)", "Violence circling back to its source.", "Vande Mataram carried in resolve."],
+  ["Hijli closing, reopening, finally emptying out.", "War shifting prisoners into new shadows.", "A camp reborn as IIT Kharagpur.", "\"Symbolic of India's future.\" (Nehru)", "From barbed wire to convocation cloth.", "Memory built into new walls."],
 ]
 
 // Basic geometry constants for spatial reasoning
-const TILE_SIZE = 90 // must match CSS `.tile` size
-const ADJACENCY_THRESHOLD = 130 // pixel distance within which cubes are considered connected
+const TILE_SIZE = 110 // must match CSS `.tile` size
+const ADJACENCY_THRESHOLD = 150 // pixel distance within which cubes are considered connected
+
+// Get narrative phase for a cube (0-indexed)
+const getPhase = (cubeIndex) => {
+  if (cubeIndex < 5) return 1 // Beginning
+  if (cubeIndex < 10) return 2 // Tensions & Approach
+  if (cubeIndex < 15) return 3 // The Firing
+  if (cubeIndex < 20) return 4 // Aftermath
+  return 5 // Response & Legacy
+}
+
+// ============================================================================
+// ZONE-BASED PLACEMENT SYSTEM
+// ============================================================================
+// Zones are invisible spatial regions that guide initial cube placement.
+// Each narrative phase is assigned a zone, creating soft spatial clustering
+// without enforcing any gameplay constraints.
+
+const GRID_SIZE = 5 // 5x5 grid
+const CELL_SPACING = 150 // pixels between cube centers
+
+// Define spatial zones for each narrative phase
+// Each zone specifies a region as {minX, maxX, minY, maxY} in grid coordinates (0-4)
+const PHASE_ZONES = {
+  1: { minX: 0, maxX: 1, minY: 0, maxY: 1 }, // Beginning: Top-left
+  2: { minX: 3, maxX: 4, minY: 0, maxY: 1 }, // Tension: Top-right
+  3: { minX: 1, maxX: 3, minY: 2, maxY: 3 }, // Event: Center
+  4: { minX: 0, maxX: 2, minY: 3, maxY: 4 }, // Aftermath: Bottom-left
+  5: { minX: 2, maxX: 4, minY: 3, maxY: 4 }, // Legacy: Bottom-right
+}
+
+// Seeded random number generator (simple Linear Congruential Generator)
+const seededRandom = (seed) => {
+  let state = seed
+  return () => {
+    state = (state * 1664525 + 1013904223) % 4294967296
+    return state / 4294967296
+  }
+}
+
+// Get all available grid cells for a zone (optionally including spillover)
+const getZoneCells = (zone, allowSpillover = false) => {
+  const cells = []
+  
+  // Core zone cells
+  for (let x = zone.minX; x <= zone.maxX; x++) {
+    for (let y = zone.minY; y <= zone.maxY; y++) {
+      cells.push({ x, y, isCore: true })
+    }
+  }
+  
+  // Add spillover cells (adjacent to zone boundaries)
+  if (allowSpillover) {
+    for (let x = Math.max(0, zone.minX - 1); x <= Math.min(GRID_SIZE - 1, zone.maxX + 1); x++) {
+      for (let y = Math.max(0, zone.minY - 1); y <= Math.min(GRID_SIZE - 1, zone.maxY + 1); y++) {
+        // Skip if already in core zone
+        if (x >= zone.minX && x <= zone.maxX && y >= zone.minY && y <= zone.maxY) continue
+        cells.push({ x, y, isCore: false })
+      }
+    }
+  }
+  
+  return cells
+}
+
+// Shuffle array using Fisher-Yates algorithm with seeded random
+const shuffleArray = (arr, random) => {
+  const shuffled = [...arr]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
+// Generate zone-based initial positions for all cubes
+const generateZoneBasedPositions = (seed = 12345) => {
+  const random = seededRandom(seed)
+  const positions = []
+  const usedCells = new Set()
+  
+  // Group cubes by phase
+  const cubesByPhase = {}
+  for (let i = 0; i < cubeData.length; i++) {
+    const phase = getPhase(i)
+    if (!cubesByPhase[phase]) cubesByPhase[phase] = []
+    cubesByPhase[phase].push(i)
+  }
+  
+  // Place cubes for each phase
+  for (const [phase, cubeIndices] of Object.entries(cubesByPhase)) {
+    const zone = PHASE_ZONES[parseInt(phase)]
+    const numCubes = cubeIndices.length
+    // Allow 1-2 cubes per phase to spill into neighboring zones
+    const numSpillover = Math.min(2, Math.floor(random() * 3)) // 0-2 cubes
+    
+    // Get available cells (core + spillover)
+    let availableCells = getZoneCells(zone, true)
+    
+    // Filter out already used cells
+    availableCells = availableCells.filter(
+      cell => !usedCells.has(`${cell.x},${cell.y}`)
+    )
+    
+    // Separate core and spillover cells
+    const coreCells = availableCells.filter(c => c.isCore)
+    const spilloverCells = availableCells.filter(c => !c.isCore)
+    
+    // Shuffle for randomization
+    const shuffledCore = shuffleArray(coreCells, random)
+    const shuffledSpillover = shuffleArray(spilloverCells, random)
+    
+    // Assign positions
+    for (let i = 0; i < numCubes; i++) {
+      const cubeIndex = cubeIndices[i]
+      let cell
+      
+      // First (numCubes - numSpillover) cubes go to core zone
+      if (i < numCubes - numSpillover && shuffledCore.length > 0) {
+        cell = shuffledCore.shift()
+      } else if (shuffledSpillover.length > 0) {
+        // Spillover cubes
+        cell = shuffledSpillover.shift()
+      } else if (shuffledCore.length > 0) {
+        // Fallback to core if spillover exhausted
+        cell = shuffledCore.shift()
+      } else {
+        // Last resort: find any unused cell
+        for (let x = 0; x < GRID_SIZE; x++) {
+          for (let y = 0; y < GRID_SIZE; y++) {
+            if (!usedCells.has(`${x},${y}`)) {
+              cell = { x, y }
+              break
+            }
+          }
+          if (cell) break
+        }
+      }
+      
+      if (cell) {
+        usedCells.add(`${cell.x},${cell.y}`)
+        positions[cubeIndex] = {
+          x: cell.x * CELL_SPACING,
+          y: cell.y * CELL_SPACING,
+        }
+      }
+    }
+  }
+  
+  return positions
+}
+
+// ============================================================================
+// END ZONE-BASED PLACEMENT SYSTEM
+// ============================================================================
 
 // Face rotations: [rotateX, rotateY] for each face
 const faceRotations = [
@@ -116,12 +276,7 @@ const computeSpatialGraph = (positions) => {
 }
 
 function App() {
-  const [positions, setPositions] = useState(() =>
-    cubeData.map((_, i) => ({
-      x: (i % 5) * 130,
-      y: Math.floor(i / 5) * 130,
-    }))
-  )
+  const [positions, setPositions] = useState(() => generateZoneBasedPositions())
 
   const [focused, setFocused] = useState(null)
   const [focusedPosition, setFocusedPosition] = useState(null)
@@ -245,13 +400,8 @@ function App() {
     setInteractionLog([])
     setIsSessionActive(false)
     
-    // Reset cube positions to initial grid
-    setPositions(
-      cubeData.map((_, i) => ({
-        x: (i % 5) * 130,
-        y: Math.floor(i / 5) * 130,
-      }))
-    )
+    // Reset cube positions to zone-based layout
+    setPositions(generateZoneBasedPositions())
     
     // Reset timer
     if (timerRef.current) {
@@ -668,11 +818,12 @@ function App() {
       <div className={`grid ${focused !== null ? "blurred" : ""}`}>
         {cubeData.map((cube, index) => {
           const nodePositions = ["top", "right", "bottom", "left"]
+          const phase = getPhase(index)
           
           return (
             <div
               key={index}
-              className="tile"
+              className={`tile phase-${phase}`}
               onMouseDown={(e) => onMouseDown(e, index)}
               onMouseUp={(e) => onMouseUp(e, index)}
               style={{
@@ -710,9 +861,9 @@ function App() {
         {connections.length > 0 && (
           <svg
             className="connections"
-            width="550"
-            height="550"
-            viewBox="0 0 550 550"
+            width="800"
+            height="800"
+            viewBox="0 0 800 800"
             style={{ overflow: "visible" }}
           >
             <defs>
@@ -724,7 +875,7 @@ function App() {
                 refY="2.5"
                 orient="auto"
               >
-                <polygon points="0 0, 5 2.5, 0 5" fill="#b37860" />
+                <polygon points="0 0, 5 2.5, 0 5" fill="#C28B47" />
               </marker>
             </defs>
             {connections.map((conn, idx) => {
@@ -792,7 +943,7 @@ function App() {
                 <g key={`conn-${idx}`}>
                   <path
                     d={pathData}
-                    stroke="#b37860"
+                    stroke="#C28B47"
                     strokeWidth="4"
                     fill="none"
                     strokeLinecap="round"
@@ -804,8 +955,8 @@ function App() {
                         cx={badgeX}
                         cy={badgeY}
                         r="16"
-                        fill="#f7f3ee"
-                        stroke="#b37860"
+                        fill="#1B1F26"
+                        stroke="#C28B47"
                         strokeWidth="3"
                       />
                       <text
@@ -813,7 +964,7 @@ function App() {
                         y={badgeY}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fill="#b37860"
+                        fill="#C28B47"
                         fontSize="13"
                         fontWeight="700"
                       >
@@ -852,7 +1003,7 @@ function App() {
             >
               {["front", "right", "back", "left", "top", "bottom"].map(
                 (face, idx) => (
-                  <div key={face} className={`face ${face}`}>
+                  <div key={face} className={`face ${face} phase-${getPhase(focused)}`}>
                     {cubeData[focused][idx]}
                   </div>
                 )
