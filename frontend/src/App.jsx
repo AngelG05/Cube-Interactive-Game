@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import "./App.css"
+import { analytics } from "./analytics"
 
 // HIJLI STORY - 25 Cubes organized into 5 narrative phases
 const cubeData = [
@@ -314,6 +315,7 @@ function App() {
   const offset = useRef({ x: 0, y: 0 })
   const hasDragged = useRef(false)
   const startPos = useRef({ x: 0, y: 0 })
+  const dragStartCubePos = useRef({ x: 0, y: 0 })
   const touchStart = useRef({ x: 0, y: 0 })
   const isSwiping = useRef(false)
 
@@ -390,11 +392,13 @@ function App() {
   }
 
   const handleSkipWalkthrough = () => {
+    analytics.notifyWalkthroughSkipped(walkthroughStep)
     setShowWalkthrough(false)
     localStorage.setItem("hijli-walkthrough-completed", "true")
   }
 
   const handleCompleteWalkthrough = () => {
+    analytics.notifyWalkthroughCompleted()
     setShowWalkthrough(false)
     setWalkthroughStep(0)
     localStorage.setItem("hijli-walkthrough-completed", "true")
@@ -453,7 +457,8 @@ function App() {
     timerRef.current = setInterval(() => {
       setElapsedMs(Date.now() - startTimeRef.current)
     }, 100)
-    
+
+    analytics.startSession()
     showToast("Session started. Click nodes to create connections.", "success")
   }
 
@@ -472,11 +477,24 @@ function App() {
       setElapsedMs(Date.now() - startTimeRef.current)
       startTimeRef.current = null
     }
-    
+
+    // Compute final story path for analytics
+    const storyOrder = computeStoryOrder()
+    const storyPhases = storyOrder.map(getPhase)
+    const storyText = storyOrder.map((i) => cubeData[i][cubeFaceIndices[i]]).join(" ")
+    analytics.finishSession({
+      finalConnectionCount: connections.length,
+      storyPath: storyOrder,
+      phaseSequence: storyPhases,
+      storyText,
+    })
+
     showToast("Session finished.", "success")
   }
 
   const handleReset = () => {
+    const durationBeforeReset = startTimeRef.current ? Date.now() - startTimeRef.current : 0
+    analytics.logSessionReset(connections.length, durationBeforeReset)
     // Reset all connections and selections
     setConnections([])
     setSelectedNode(null)
@@ -578,7 +596,13 @@ function App() {
     if (isSessionActive) {
       logSnapshot("result-button")
     }
-    
+
+    analytics.logStoryGenerated(
+      order,
+      order.map(getPhase),
+      words,
+      sentence
+    )
     showToast("Story generated!", "success")
   }
 
@@ -587,6 +611,7 @@ function App() {
     dragging.current = index
     hasDragged.current = false
     startPos.current = { x: e.clientX, y: e.clientY }
+    dragStartCubePos.current = { ...positions[index] }
     offset.current = {
       x: e.clientX - positions[index].x,
       y: e.clientY - positions[index].y,
@@ -626,6 +651,13 @@ function App() {
         })
         setFaceIndex(cubeFaceIndices[index])
 
+        analytics.logCubeFocused(
+          index,
+          getPhase(index),
+          cubeFaceIndices[index],
+          cubeData[index][cubeFaceIndices[index]]
+        )
+
         if (isSessionActive) {
           setInteractionLog((prev) => [
             ...prev,
@@ -642,6 +674,11 @@ function App() {
       } else if (hasDragged.current && dragging.current !== null) {
         // Drag finished - log the final position of the dragged cube
         const draggedIndex = dragging.current
+        const finalPos = {
+          x: e.clientX - offset.current.x,
+          y: e.clientY - offset.current.y,
+        }
+        analytics.logCubeDragged(draggedIndex, dragStartCubePos.current, finalPos)
         if (isSessionActive) {
           setInteractionLog((prev) => [
             ...prev,
@@ -684,6 +721,7 @@ function App() {
 
       if (isMatchingPair) {
         // Remove the connection
+        analytics.logConnectionRemoved(conn.from.cubeIndex, conn.to.cubeIndex)
         setConnections((prev) => prev.filter((_, i) => i !== existingConnIdx))
         setSelectedNode(null)
         showToast("Connection removed.", "info")
@@ -714,6 +752,7 @@ function App() {
 
     // Validation 1: No self-connections
     if (fromNode.cubeIndex === toNode.cubeIndex) {
+      analytics.logConnectionFailed("self_connection", fromNode.cubeIndex, toNode.cubeIndex)
       showToast("Cannot connect a cube to itself.", "error")
       return
     }
@@ -723,11 +762,13 @@ function App() {
     const toCubeIncoming = connections.filter((c) => c.to.cubeIndex === toNode.cubeIndex).length
 
     if (fromCubeOutgoing >= 1) {
+      analytics.logConnectionFailed("max_outgoing", fromNode.cubeIndex, toNode.cubeIndex)
       showToast(`Cube ${fromNode.cubeIndex + 1} already has an outgoing connection.`, "error")
       return
     }
 
     if (toCubeIncoming >= 1) {
+      analytics.logConnectionFailed("max_incoming", fromNode.cubeIndex, toNode.cubeIndex)
       showToast(`Cube ${toNode.cubeIndex + 1} already has an incoming connection.`, "error")
       return
     }
@@ -753,36 +794,54 @@ function App() {
     }
 
     if (wouldCreateCycle(fromNode, toNode)) {
+      analytics.logConnectionFailed("would_create_cycle", fromNode.cubeIndex, toNode.cubeIndex)
       showToast("Cannot create a cycle in the story.", "error")
       return
     }
 
     // Create the connection
+    const newTotalConnections = connections.length + 1
+    analytics.logConnectionCreated({
+      fromCube: fromNode.cubeIndex,
+      fromPhase: getPhase(fromNode.cubeIndex),
+      fromFaceIndex: cubeFaceIndices[fromNode.cubeIndex],
+      fromFaceContent: cubeData[fromNode.cubeIndex][cubeFaceIndices[fromNode.cubeIndex]],
+      toCube: toNode.cubeIndex,
+      toPhase: getPhase(toNode.cubeIndex),
+      toFaceIndex: cubeFaceIndices[toNode.cubeIndex],
+      toFaceContent: cubeData[toNode.cubeIndex][cubeFaceIndices[toNode.cubeIndex]],
+      totalConnections: newTotalConnections,
+    })
     setConnections((prev) => [...prev, { from: fromNode, to: toNode }])
     setSelectedNode(null)
     showToast("Connection created!", "success")
-    
+
     if (isSessionActive) {
       logSnapshot("connection-created")
     }
   }
 
   const rotateCube = (direction) => {
-    setFaceIndex((prev) => {
-      const directionMap = { left: 0, right: 1, up: 2, down: 3 }
-      const newFaceIndex = navigationMap[prev][directionMap[direction]]
-      
-      // Update the face index for the focused cube
-      if (focused !== null) {
-        setCubeFaceIndices((prevIndices) => {
-          const newIndices = [...prevIndices]
-          newIndices[focused] = newFaceIndex
-          return newIndices
-        })
-      }
-      
-      return newFaceIndex
-    })
+    const directionMap = { left: 0, right: 1, up: 2, down: 3 }
+    const newFaceIndex = navigationMap[faceIndex][directionMap[direction]]
+
+    setFaceIndex(newFaceIndex)
+
+    if (focused !== null) {
+      setCubeFaceIndices((prevIndices) => {
+        const newIndices = [...prevIndices]
+        newIndices[focused] = newFaceIndex
+        return newIndices
+      })
+      analytics.logFaceRotated(
+        focused,
+        getPhase(focused),
+        direction,
+        faceIndex,
+        newFaceIndex,
+        cubeData[focused][newFaceIndex]
+      )
+    }
   }
 
   const handleTouchStart = (e) => {
@@ -1142,6 +1201,11 @@ function App() {
           <div
             className="overlay"
             onClick={() => {
+              analytics.logCubeUnfocused(
+                focused,
+                cubeFaceIndices[focused],
+                cubeData[focused][cubeFaceIndices[focused]]
+              )
               setIsExiting(true)
               setTimeout(() => {
                 // Capture a snapshot of the current spatial arrangement
