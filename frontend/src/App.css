@@ -290,6 +290,8 @@ body {
   width: 300px;
   height: 300px;
   z-index: 10;
+  perspective: 1800px;
+  transform-style: preserve-3d;
   animation: cubeEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
@@ -428,6 +430,7 @@ body {
   transform-style: preserve-3d;
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: grab;
+  will-change: transform;
 }
 
 .cube:active {
@@ -455,7 +458,8 @@ body {
   word-wrap: break-word;
   hyphens: auto;
   border: 1.5px solid var(--color-cube-edge);
-  position: relative;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
 
 /* Phase colors on cube faces */
