@@ -282,7 +282,7 @@ function App() {
   const [focusedPosition, setFocusedPosition] = useState(null)
   const [faceIndex, setFaceIndex] = useState(0)
   const [cubeFaceIndices, setCubeFaceIndices] = useState(() => 
-    Array(cubeData.length).fill(0)
+    Array(cubeData.length).fill(0).map(() => Math.floor(Math.random() * 6))
   )
   const [isExiting, setIsExiting] = useState(false)
 
@@ -306,6 +306,10 @@ function App() {
   const startTimeRef = useRef(null)
   const timerRef = useRef(null)
 
+  // Walkthrough state
+  const [showWalkthrough, setShowWalkthrough] = useState(false)
+  const [walkthroughStep, setWalkthroughStep] = useState(0)
+
   const dragging = useRef(null)
   const offset = useRef({ x: 0, y: 0 })
   const hasDragged = useRef(false)
@@ -320,6 +324,86 @@ function App() {
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
     }, 3000)
+  }
+
+  // Walkthrough steps configuration
+  const walkthroughSteps = [
+    {
+      target: ".tile",
+      title: "Welcome to Hijli Story Cubes! 📖",
+      content: "Explore the Hijli Detention Camp story through interactive cubes. Each cube contains fragments of this historical narrative.",
+      position: "center",
+    },
+    {
+      target: ".tile",
+      title: "Drag Cubes",
+      content: "Click and drag any cube to move it around the canvas. Arrange them as you explore the story.",
+      position: "bottom",
+    },
+    {
+      target: ".tile",
+      title: "Focus on a Cube",
+      content: "Click on any cube to focus and see it in 3D. Each cube has 6 different text fragments!",
+      position: "bottom",
+    },
+    {
+      target: ".session-controls",
+      title: "Session Controls",
+      content: "Start a session to begin creating story connections. The timer tracks your exploration time.",
+      position: "bottom",
+    },
+    {
+      target: ".connection-node",
+      title: "Connect the Story",
+      content: "Click on nodes (small circles on cubes) to create connections. Build your narrative path by linking cubes together.",
+      position: "bottom",
+    },
+    {
+      target: ".session-button-result",
+      title: "Generate Your Story",
+      content: "Once you've created connections, click Result to see your unique story sequence!",
+      position: "bottom",
+    },
+  ]
+
+  // Check if user has seen walkthrough
+  useEffect(() => {
+    const hasSeenWalkthrough = localStorage.getItem("hijli-walkthrough-completed")
+    if (!hasSeenWalkthrough) {
+      // Small delay before showing walkthrough
+      setTimeout(() => setShowWalkthrough(true), 500)
+    }
+  }, [])
+
+  const handleNextStep = () => {
+    if (walkthroughStep < walkthroughSteps.length - 1) {
+      setWalkthroughStep((prev) => prev + 1)
+    } else {
+      handleCompleteWalkthrough()
+    }
+  }
+
+  const handlePrevStep = () => {
+    if (walkthroughStep > 0) {
+      setWalkthroughStep((prev) => prev - 1)
+    }
+  }
+
+  const handleSkipWalkthrough = () => {
+    setShowWalkthrough(false)
+    localStorage.setItem("hijli-walkthrough-completed", "true")
+  }
+
+  const handleCompleteWalkthrough = () => {
+    setShowWalkthrough(false)
+    setWalkthroughStep(0)
+    localStorage.setItem("hijli-walkthrough-completed", "true")
+    showToast("Walkthrough completed! Start exploring.", "success")
+  }
+
+  const handleRestartWalkthrough = () => {
+    setWalkthroughStep(0)
+    setShowWalkthrough(true)
   }
 
   const logSnapshot = (reason) => {
@@ -813,6 +897,13 @@ function App() {
         >
           Result
         </button>
+        <button
+          className="session-button help-button"
+          onClick={handleRestartWalkthrough}
+          title="Show walkthrough"
+        >
+          ?
+        </button>
       </div>
 
       <div className={`grid ${focused !== null ? "blurred" : ""}`}>
@@ -1068,8 +1159,31 @@ function App() {
         </>
       )}
 
-      <div className="hint">
-        drag to move · click to focus · use arrows or swipe to flip cube · click nodes to connect
+      {/* Phase Legend */}
+      <div className="phase-legend">
+        <span className="legend-title">Phases</span>
+        <div className="legend-items">
+          <div className="legend-item">
+            <span className="legend-dot phase-1-color"></span>
+            <span className="legend-label">Beginning</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-dot phase-2-color"></span>
+            <span className="legend-label">Tensions</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-dot phase-3-color"></span>
+            <span className="legend-label">The Firing</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-dot phase-4-color"></span>
+            <span className="legend-label">Aftermath</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-dot phase-5-color"></span>
+            <span className="legend-label">Legacy</span>
+          </div>
+        </div>
       </div>
 
       {/* Toast notifications */}
@@ -1086,6 +1200,55 @@ function App() {
           <span className="result-label">Result</span>
           <span className="result-text">{resultSentence}</span>
         </div>
+      )}
+
+      {/* Walkthrough overlay and tooltip */}
+      {showWalkthrough && (
+        <>
+          <div className="walkthrough-overlay" onClick={handleSkipWalkthrough} />
+          <div className="walkthrough-tooltip">
+            <div className="walkthrough-header">
+              <h3>{walkthroughSteps[walkthroughStep].title}</h3>
+              <button 
+                className="walkthrough-close"
+                onClick={handleSkipWalkthrough}
+                aria-label="Close walkthrough"
+              >
+                ×
+              </button>
+            </div>
+            <div className="walkthrough-content">
+              <p>{walkthroughSteps[walkthroughStep].content}</p>
+            </div>
+            <div className="walkthrough-footer">
+              <div className="walkthrough-progress">
+                Step {walkthroughStep + 1} of {walkthroughSteps.length}
+              </div>
+              <div className="walkthrough-buttons">
+                {walkthroughStep > 0 && (
+                  <button 
+                    className="walkthrough-button walkthrough-back"
+                    onClick={handlePrevStep}
+                  >
+                    Back
+                  </button>
+                )}
+                <button 
+                  className="walkthrough-button walkthrough-skip"
+                  onClick={handleSkipWalkthrough}
+                >
+                  Skip
+                </button>
+                <button 
+                  className="walkthrough-button walkthrough-next"
+                  onClick={handleNextStep}
+                >
+                  {walkthroughStep === walkthroughSteps.length - 1 ? "Finish" : "Next"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )
