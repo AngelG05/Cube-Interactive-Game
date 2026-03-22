@@ -696,30 +696,35 @@ body {
   white-space: nowrap;
 }
 
-/* Feedback (Feedback.jsx) shown after Finish or Result — above result banner when both visible */
+/* Feedback (Feedback.jsx) — centered modal over dimmed backdrop */
 .app-end-feedback {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  max-height: min(52vh, 420px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  z-index: 900;
-  padding: 12px 16px 20px;
-  background: linear-gradient(
-    to top,
-    rgba(21, 23, 27, 0.98) 0%,
-    rgba(21, 23, 27, 0.88) 55%,
-    rgba(21, 23, 27, 0) 100%
-  );
-  border-top: 1px solid var(--color-cube-edge);
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+  inset: 0;
+  z-index: 1150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top, 0px))
+    max(16px, env(safe-area-inset-right, 0px))
+    max(16px, env(safe-area-inset-bottom, 0px))
+    max(16px, env(safe-area-inset-left, 0px));
+  overflow: auto;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  background: rgba(21, 23, 27, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
-.app-end-feedback--with-result {
-  bottom: 112px;
+.app-end-feedback .feedback-root {
+  width: 100%;
+  max-width: min(520px, 100%);
+  max-height: min(90vh, 720px);
+  max-height: min(90dvh, 720px);
+  margin: auto;
+  flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .result-banner {
@@ -1072,10 +1077,6 @@ body {
     max-width: calc(100vw - 32px);
   }
 
-  .app-end-feedback--with-result {
-    bottom: 132px;
-  }
-
   .toast-container {
     bottom: 24px;
     right: 24px;
@@ -1148,10 +1149,6 @@ body {
     bottom: 12px;
     padding: 10px 16px;
     font-size: 0.7rem;
-  }
-
-  .app-end-feedback--with-result {
-    bottom: 148px;
   }
 
   .scene {
