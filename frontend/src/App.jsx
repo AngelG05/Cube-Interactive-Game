@@ -1321,9 +1321,7 @@ function App() {
       )}
 
       {(sessionFinished || resultSentence) && (
-        <div
-          className={`app-end-feedback${resultSentence ? " app-end-feedback--with-result" : ""}`}
-        >
+        <div className="app-end-feedback">
           <FeedbackSection />
         </div>
       )}
