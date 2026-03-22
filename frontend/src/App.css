@@ -696,6 +696,32 @@ body {
   white-space: nowrap;
 }
 
+/* Feedback (Feedback.jsx) shown after Finish or Result — above result banner when both visible */
+.app-end-feedback {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 900;
+  padding: 12px 16px 20px;
+  background: linear-gradient(
+    to top,
+    rgba(21, 23, 27, 0.98) 0%,
+    rgba(21, 23, 27, 0.88) 55%,
+    rgba(21, 23, 27, 0) 100%
+  );
+  border-top: 1px solid var(--color-cube-edge);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-end-feedback--with-result {
+  bottom: 112px;
+}
+
 .result-banner {
   position: fixed;
   left: 50%;
@@ -1046,6 +1072,10 @@ body {
     max-width: calc(100vw - 32px);
   }
 
+  .app-end-feedback--with-result {
+    bottom: 132px;
+  }
+
   .toast-container {
     bottom: 24px;
     right: 24px;
@@ -1118,6 +1148,10 @@ body {
     bottom: 12px;
     padding: 10px 16px;
     font-size: 0.7rem;
+  }
+
+  .app-end-feedback--with-result {
+    bottom: 148px;
   }
 
   .scene {
