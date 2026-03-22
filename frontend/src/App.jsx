@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react"
 import "./App.css"
 import { analytics } from "./analytics"
-import FeedbackSection from "./components/FeedbackSection"
+import FeedbackSection from "./Feedback"
 
 // HIJLI STORY - 25 Cubes organized into 5 narrative phases
 const cubeData = [
@@ -302,6 +302,7 @@ function App() {
   const [isSessionActive, setIsSessionActive] = useState(false)
   const [sessionId, setSessionId] = useState(0)
   const [resultSentence, setResultSentence] = useState("")
+  const [sessionFinished, setSessionFinished] = useState(false)
 
   // Timer state: elapsed milliseconds since session start
   const [elapsedMs, setElapsedMs] = useState(0)
@@ -447,6 +448,7 @@ function App() {
     setInteractionLog([])
     setIsSessionActive(true)
     setResultSentence("")
+    setSessionFinished(false)
 
     if (typeof window !== "undefined") {
       window.cubeInteractionData = null
@@ -490,6 +492,7 @@ function App() {
       storyText,
     })
 
+    setSessionFinished(true)
     showToast("Session finished.", "success")
   }
 
@@ -502,6 +505,7 @@ function App() {
     setResultSentence("")
     setInteractionLog([])
     setIsSessionActive(false)
+    setSessionFinished(false)
     
     // Reset cube positions to zone-based layout
     setPositions(generateZoneBasedPositions())
@@ -1315,7 +1319,14 @@ function App() {
           </div>
         </>
       )}
-      <FeedbackSection />
+
+      {(sessionFinished || resultSentence) && (
+        <div
+          className={`app-end-feedback${resultSentence ? " app-end-feedback--with-result" : ""}`}
+        >
+          <FeedbackSection />
+        </div>
+      )}
     </div>
   )
 }
