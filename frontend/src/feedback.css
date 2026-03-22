@@ -1,0 +1,311 @@
+.feedback-root {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 8px 4px 12px;
+}
+
+.feedback-card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-cube-edge);
+  border-radius: 14px;
+  box-shadow: var(--shadow-medium);
+  overflow: hidden;
+}
+
+.feedback-card-accent {
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--color-accent) 0%,
+    var(--phase-4-color) 50%,
+    var(--phase-2-color) 100%
+  );
+}
+
+.feedback-inner {
+  padding: 20px 22px 22px;
+}
+
+@media (max-width: 480px) {
+  .feedback-inner {
+    padding: 16px 16px 18px;
+  }
+}
+
+.feedback-eyebrow {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin: 0 0 6px;
+  opacity: 0.9;
+}
+
+.feedback-title {
+  font-family: "Libre Baskerville", serif;
+  font-size: 1.15rem;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  margin: 0 0 8px;
+  line-height: 1.35;
+}
+
+.feedback-subtitle {
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+  margin: 0 0 20px;
+}
+
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.feedback-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.feedback-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.feedback-input,
+.feedback-textarea {
+  width: 100%;
+  font-family: "Libre Baskerville", serif;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-cube-edge);
+  border-radius: 8px;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.feedback-input::placeholder,
+.feedback-textarea::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.85;
+}
+
+.feedback-input:hover,
+.feedback-textarea:hover {
+  border-color: var(--color-connection-default);
+}
+
+.feedback-input:focus,
+.feedback-textarea:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(194, 139, 71, 0.2);
+}
+
+.feedback-textarea {
+  min-height: 88px;
+  resize: vertical;
+  max-height: 200px;
+}
+
+.feedback-stars-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.feedback-stars {
+  display: flex;
+  gap: 2px;
+}
+
+.feedback-star-label {
+  position: relative;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+}
+
+.feedback-star-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  clip: rect(0, 0, 0, 0);
+}
+
+.feedback-star-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.feedback-star-label:focus-within .feedback-star-btn {
+  box-shadow: 0 0 0 2px rgba(194, 139, 71, 0.45);
+}
+
+.feedback-star-btn {
+  display: block;
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--color-connection-default);
+  transition: color 0.12s ease, transform 0.12s ease;
+  border-radius: 4px;
+}
+
+.feedback-star-label:hover .feedback-star-btn {
+  color: var(--color-accent-hover);
+  transform: scale(1.08);
+}
+
+.feedback-star-btn--active {
+  color: var(--color-accent);
+}
+
+.feedback-rating-hint {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.feedback-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.feedback-submit {
+  align-self: flex-start;
+  font-family: "Libre Baskerville", serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 11px 22px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  background: var(--color-accent);
+  color: var(--color-bg-primary);
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+
+.feedback-submit:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+
+.feedback-submit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.feedback-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.feedback-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.feedback-char-count {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+}
+
+.feedback-alert {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-cube-edge);
+}
+
+.feedback-alert--error {
+  background: rgba(122, 79, 79, 0.15);
+  color: var(--color-text-secondary);
+  border-color: rgba(122, 79, 79, 0.35);
+}
+
+.feedback-success {
+  text-align: center;
+  padding: 28px 20px 24px;
+}
+
+.feedback-success-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: rgba(109, 181, 137, 0.18);
+  border: 1px solid var(--phase-5-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--phase-5-color);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.feedback-success-title {
+  font-family: "Libre Baskerville", serif;
+  font-size: 1.05rem;
+  color: var(--color-text-primary);
+  margin: 0 0 8px;
+}
+
+.feedback-success-text {
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+  margin: 0 0 18px;
+}
+
+.feedback-success-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.feedback-link-btn {
+  font-family: "Libre Baskerville", serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: none;
+  border: 1px solid var(--color-cube-edge);
+  color: var(--color-accent);
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.feedback-link-btn:hover {
+  border-color: var(--color-accent);
+  background: rgba(194, 139, 71, 0.08);
+}
