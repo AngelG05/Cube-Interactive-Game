@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react"
 import "./App.css"
 import { analytics } from "./analytics"
-import FeedbackSection from "./Feedback"
+import FeedbackSection from "./feedback"
 
 // HIJLI STORY - 25 Cubes organized into 5 narrative phases
 const cubeData = [
