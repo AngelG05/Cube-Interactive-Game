@@ -1322,7 +1322,7 @@ function App() {
 
       {(sessionFinished || resultSentence) && (
         <div className="app-end-feedback">
-          <FeedbackSection />
+          <FeedbackSection sessionId={analytics.sessionUuid} />
         </div>
       )}
     </div>
