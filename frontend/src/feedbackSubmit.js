@@ -9,7 +9,7 @@ const client =
     : null
 
 /**
- * @param {{ name: string; rating: number; message: string }} payload
+ * @param {{ name: string; rating: number; message: string; sessionId?: string }} payload
  * @returns {Promise<{ ok: true } | { ok: false; error: string }>}
  */
 export async function submitUserFeedback(payload) {
@@ -25,6 +25,7 @@ export async function submitUserFeedback(payload) {
     name: payload.name.trim(),
     rating: payload.rating,
     message: payload.message.trim(),
+    session_id: payload.sessionId,
   })
 
   if (error) {
