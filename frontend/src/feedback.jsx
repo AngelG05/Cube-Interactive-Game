@@ -7,7 +7,7 @@ const MESSAGE_MAX = 4000
 
 const ratingLabels = ["", "Poor", "Fair", "Good", "Very good", "Excellent"]
 
-const FeedbackSection = () => {
+const FeedbackSection = ({ sessionId }) => {
   const [name, setName] = useState("")
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
@@ -41,6 +41,7 @@ const FeedbackSection = () => {
       name: trimmedName,
       rating,
       message: trimmedMessage,
+      sessionId,
     })
     setSubmitting(false)
 
