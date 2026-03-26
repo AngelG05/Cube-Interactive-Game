@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { submitUserFeedback } from "./feedbackSubmit"
-import "./Feedback.css"
+import "./feedback.css"
 
 const NAME_MAX = 200
 const MESSAGE_MAX = 4000
