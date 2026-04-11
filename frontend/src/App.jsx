@@ -278,6 +278,11 @@ const computeSpatialGraph = (positions) => {
 }
 
 function App() {
+  const BASE_CANVAS_SIZE = 710
+  const MIN_CANVAS_ZOOM = 0.65
+  const MAX_CANVAS_ZOOM = 1.8
+  const ZOOM_STEP = 0.15
+
   const [positions, setPositions] = useState(() => generateZoneBasedPositions())
 
   const [focused, setFocused] = useState(null)
@@ -305,6 +310,10 @@ function App() {
   const [sessionFinished, setSessionFinished] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+  const [canvasZoom, setCanvasZoom] = useState(1)
+  const [isMobileViewport, setIsMobileViewport] = useState(false)
+  const [desktopCanvasScale, setDesktopCanvasScale] = useState(1)
+  const pinchStateRef = useRef({ active: false, startDistance: 0, startZoom: 1 })
 
   // Timer state: elapsed milliseconds since session start
   const [elapsedMs, setElapsedMs] = useState(0)
@@ -384,6 +393,47 @@ function App() {
       setTimeout(() => setShowWalkthrough(true), 500)
     }
   }, [])
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 768px)")
+    const applyViewportMode = () => setIsMobileViewport(media.matches)
+    applyViewportMode()
+
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", applyViewportMode)
+      return () => media.removeEventListener("change", applyViewportMode)
+    }
+
+    media.addListener(applyViewportMode)
+    return () => media.removeListener(applyViewportMode)
+  }, [])
+
+  useEffect(() => {
+    const updateDesktopScale = () => {
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        setDesktopCanvasScale(1)
+        return
+      }
+
+      // Reserve vertical space for the top dock and result/footer elements.
+      const availableWidth = window.innerWidth - 44
+      const availableHeight = window.innerHeight - 235
+      const maxCanvasByViewport = Math.min(availableWidth, availableHeight)
+      const fittedScale = Math.min(1, Math.max(0.72, maxCanvasByViewport / BASE_CANVAS_SIZE))
+      setDesktopCanvasScale(Number(fittedScale.toFixed(3)))
+    }
+
+    updateDesktopScale()
+    window.addEventListener("resize", updateDesktopScale)
+    return () => window.removeEventListener("resize", updateDesktopScale)
+  }, [])
+
+  useEffect(() => {
+    // Keep desktop canvas stable: zoom/pinch are mobile-only.
+    if (!isMobileViewport && canvasZoom !== 1) {
+      setCanvasZoom(1)
+    }
+  }, [isMobileViewport, canvasZoom])
 
   const handleNextStep = () => {
     if (walkthroughStep < walkthroughSteps.length - 1) {
@@ -635,6 +685,59 @@ function App() {
     setShowFeedback(false)
     showToast("Thanks! Feedback received.", "success")
   }
+
+  const zoomInCanvas = () => {
+    setCanvasZoom((prev) => Math.min(MAX_CANVAS_ZOOM, Number((prev + ZOOM_STEP).toFixed(2))))
+  }
+
+  const zoomOutCanvas = () => {
+    setCanvasZoom((prev) => Math.max(MIN_CANVAS_ZOOM, Number((prev - ZOOM_STEP).toFixed(2))))
+  }
+
+  const resetCanvasZoom = () => {
+    setCanvasZoom(1)
+  }
+
+  const getTouchDistance = (touchA, touchB) => {
+    const dx = touchA.clientX - touchB.clientX
+    const dy = touchA.clientY - touchB.clientY
+    return Math.sqrt(dx * dx + dy * dy)
+  }
+
+  const handleCanvasTouchStart = (e) => {
+    if (!isMobileViewport) return
+    if (e.touches.length !== 2) return
+    const distance = getTouchDistance(e.touches[0], e.touches[1])
+    pinchStateRef.current = {
+      active: true,
+      startDistance: distance,
+      startZoom: canvasZoom,
+    }
+  }
+
+  const handleCanvasTouchMove = (e) => {
+    if (!isMobileViewport) return
+    if (!pinchStateRef.current.active || e.touches.length !== 2) return
+    e.preventDefault()
+
+    const distance = getTouchDistance(e.touches[0], e.touches[1])
+    if (pinchStateRef.current.startDistance <= 0) return
+
+    const scale = distance / pinchStateRef.current.startDistance
+    const zoom = pinchStateRef.current.startZoom * scale
+    const clampedZoom = Math.min(MAX_CANVAS_ZOOM, Math.max(MIN_CANVAS_ZOOM, zoom))
+
+    setCanvasZoom(Number(clampedZoom.toFixed(2)))
+  }
+
+  const handleCanvasTouchEnd = (e) => {
+    if (!isMobileViewport) return
+    if (e.touches.length < 2) {
+      pinchStateRef.current.active = false
+    }
+  }
+
+  const effectiveCanvasScale = isMobileViewport ? canvasZoom : desktopCanvasScale
 
   const onMouseDown = (e, index) => {
     if (focused !== null) return
@@ -993,11 +1096,6 @@ function App() {
         >
           {feedbackSubmitted ? "Feedback Sent" : "Feedback"}
         </button>
-        {sessionFinished && resultSentence && !feedbackSubmitted && (
-          <span className="feedback-required-chip" role="status" aria-live="polite">
-            Feedback required
-          </span>
-        )}
         <button
           className="session-button help-button"
           onClick={handleRestartWalkthrough}
@@ -1005,9 +1103,62 @@ function App() {
         >
           ?
         </button>
+        {isMobileViewport && (
+          <div className="zoom-controls" role="group" aria-label="Canvas zoom controls">
+            <button
+              type="button"
+              className="session-button zoom-button"
+              onClick={zoomOutCanvas}
+              disabled={canvasZoom <= MIN_CANVAS_ZOOM}
+            >
+              -
+            </button>
+            <button
+              type="button"
+              className="session-button zoom-button zoom-readout"
+              onClick={resetCanvasZoom}
+            >
+              {Math.round(canvasZoom * 100)}%
+            </button>
+            <button
+              type="button"
+              className="session-button zoom-button"
+              onClick={zoomInCanvas}
+              disabled={canvasZoom >= MAX_CANVAS_ZOOM}
+            >
+              +
+            </button>
+          </div>
+        )}
+        {sessionFinished && resultSentence && !feedbackSubmitted && (
+          <span className="feedback-required-chip" role="status" aria-live="polite">
+            Feedback required
+          </span>
+        )}
       </div>
 
-      <div className={`grid ${focused !== null ? "blurred" : ""}`}>
+      <div className="canvas-viewport">
+        <div
+          className="canvas-gesture-layer"
+          onTouchStart={handleCanvasTouchStart}
+          onTouchMove={handleCanvasTouchMove}
+          onTouchEnd={handleCanvasTouchEnd}
+          onTouchCancel={handleCanvasTouchEnd}
+        >
+        <div
+          className="canvas-content"
+          style={{
+            width: `${Math.round(BASE_CANVAS_SIZE * effectiveCanvasScale)}px`,
+            height: `${Math.round(BASE_CANVAS_SIZE * effectiveCanvasScale)}px`,
+          }}
+        >
+          <div
+            className={`grid ${focused !== null ? "blurred" : ""}`}
+            style={{
+              transform: `scale(${effectiveCanvasScale})`,
+              transformOrigin: "top left",
+            }}
+          >
         {cubeData.map((cube, index) => {
           const nodePositions = ["top", "right", "bottom", "left"]
           const phase = getPhase(index)
@@ -1169,6 +1320,9 @@ function App() {
             })}
           </svg>
         )}
+          </div>
+        </div>
+        </div>
       </div>
 
       {focused !== null && focusedPosition && (
