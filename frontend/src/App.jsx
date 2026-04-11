@@ -303,6 +303,8 @@ function App() {
   const [sessionId, setSessionId] = useState(0)
   const [resultSentence, setResultSentence] = useState("")
   const [sessionFinished, setSessionFinished] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
 
   // Timer state: elapsed milliseconds since session start
   const [elapsedMs, setElapsedMs] = useState(0)
@@ -324,7 +326,11 @@ function App() {
   // Toast notification helper
   const showToast = (message, type = "info") => {
     const id = Date.now()
-    setToasts((prev) => [...prev, { id, message, type }])
+    setToasts((prev) => {
+      // Prevent stacking duplicate toasts when users click the same action repeatedly.
+      if (prev.some((t) => t.message === message && t.type === type)) return prev
+      return [...prev, { id, message, type }]
+    })
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
     }, 3000)
@@ -449,6 +455,8 @@ function App() {
     setIsSessionActive(true)
     setResultSentence("")
     setSessionFinished(false)
+    setShowFeedback(false)
+    setFeedbackSubmitted(false)
 
     if (typeof window !== "undefined") {
       window.cubeInteractionData = null
@@ -506,6 +514,8 @@ function App() {
     setInteractionLog([])
     setIsSessionActive(false)
     setSessionFinished(false)
+    setShowFeedback(false)
+    setFeedbackSubmitted(false)
     
     // Reset cube positions to zone-based layout
     setPositions(generateZoneBasedPositions())
@@ -608,7 +618,22 @@ function App() {
       words,
       sentence
     )
+
     showToast("Story generated!", "success")
+  }
+
+  const handleOpenFeedback = () => {
+    if (!resultSentence) {
+      showToast("Generate your story first, then share feedback.", "info")
+      return
+    }
+    setShowFeedback(true)
+  }
+
+  const handleFeedbackSubmitted = () => {
+    setFeedbackSubmitted(true)
+    setShowFeedback(false)
+    showToast("Thanks! Feedback received.", "success")
   }
 
   const onMouseDown = (e, index) => {
@@ -933,7 +958,7 @@ function App() {
         <button
           className="session-button"
           onClick={handleStartSession}
-          disabled={isSessionActive}
+          disabled={isSessionActive || (sessionFinished && !!resultSentence && !feedbackSubmitted)}
         >
           Start
         </button>
@@ -961,6 +986,18 @@ function App() {
         >
           Result
         </button>
+        <button
+          className="session-button"
+          onClick={handleOpenFeedback}
+          disabled={!resultSentence}
+        >
+          {feedbackSubmitted ? "Feedback Sent" : "Feedback"}
+        </button>
+        {sessionFinished && resultSentence && !feedbackSubmitted && (
+          <span className="feedback-required-chip" role="status" aria-live="polite">
+            Feedback required
+          </span>
+        )}
         <button
           className="session-button help-button"
           onClick={handleRestartWalkthrough}
@@ -1320,9 +1357,19 @@ function App() {
         </>
       )}
 
-      {(sessionFinished || resultSentence) && (
+      {showFeedback && (
         <div className="app-end-feedback">
-          <FeedbackSection sessionId={analytics.sessionUuid} />
+          <button
+            type="button"
+            className="session-button app-end-feedback-close"
+            onClick={() => setShowFeedback(false)}
+          >
+            Close
+          </button>
+          <FeedbackSection
+            sessionId={analytics.sessionUuid}
+            onSubmitted={handleFeedbackSubmitted}
+          />
         </div>
       )}
     </div>

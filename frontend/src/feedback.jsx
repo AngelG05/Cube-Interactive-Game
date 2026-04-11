@@ -7,7 +7,7 @@ const MESSAGE_MAX = 4000
 
 const ratingLabels = ["", "Poor", "Fair", "Good", "Very good", "Excellent"]
 
-const FeedbackSection = ({ sessionId }) => {
+const FeedbackSection = ({ sessionId, onSubmitted }) => {
   const [name, setName] = useState("")
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
@@ -54,6 +54,7 @@ const FeedbackSection = ({ sessionId }) => {
     setName("")
     setRating(0)
     setMessage("")
+    onSubmitted?.()
   }
 
   const handleAnother = () => {
